@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="tetris" width="300" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        const scale = 30;
+        const rows = canvas.height / scale;
+        const columns = canvas.width / scale;
+
+        let board = [];
+        for (let row = 0; row < rows; row++) {
+            board[row] = [];
+            for (let col = 0; col < columns; col++) {
+                board[row][col] = 0;
+            }
+        }
+
+        const shapes = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[0, 1, 0], [1, 1, 1]], // T
+            [[1, 0, 0], [1, 1, 1]], // L
+            [[0, 0, 1], [1, 1, 1]], // J
+            [[0, 1, 1], [1, 1, 0]], // S
+            [[1, 1, 0], [0, 1, 1]] // Z
+        ];
+
+        let currentPiece = {
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
+            x: Math.floor(columns / 2) - 1,
+            y: 0
+        };
+
+        function drawPiece() {
+            currentPiece.shape.forEach((row, dy) => {
+                row.forEach((value, dx) => {
+                    if (value) {
+                        context.fillStyle = 'red';
+                        context.fillRect((currentPiece.x + dx) * scale, (currentPiece.y + dy) * scale, scale, scale);
+                        context.strokeStyle = '#000';
+                        context.strokeRect((currentPiece.x + dx) * scale, (currentPiece.y + dy) * scale, scale, scale);
+                    }
+                });
+            });
+        }
+
+        function drawBoard() {
+            board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        context.fillStyle = 'blue';
+                        context.fillRect(x * scale, y * scale, scale, scale);
+                        context.strokeStyle = '#000';
+                        context.strokeRect(x * scale, y * scale, scale, scale);
+                    }
+                });
+            });
+        }
+
+        function collide() {
+            return currentPiece.shape.some((row, dy) => {
+                return row.some((value, dx) => {
+                    if (!value) return false;
+                    const x = currentPiece.x + dx;
+                    const y = currentPiece.y + dy;
+                    return x < 0 || x >= columns || y >= rows || board[y][x];
+                });
+            });
+        }
+
+        function merge() {
+            currentPiece.shape.forEach((row, dy) => {
+                row.forEach((value, dx) => {
+                    if (value) {
+                        board[currentPiece.y + dy][currentPiece.x + dx] = value;
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            for (let y = rows - 1; y >= 0; y--) {
+                if (board[y].every(cell => cell)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(columns).fill(0));
+                }
+            }
+        }
+
+        function dropPiece() {
+            currentPiece.y++;
+            if (collide()) {
+                currentPiece.y--;
+                merge();
+                clearLines();
+                currentPiece = {
+                    shape: shapes[Math.floor(Math.random() * shapes.length)],
+                    x: Math.floor(columns / 2) - 1,
+                    y: 0
+                };
+                if (collide()) {
+                    alert('游戏结束！');
+                    board = board.map(row => row.map(() => 0));
+                }
+            }
+        }
+
+        function update() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            drawBoard();
+            drawPiece();
+            dropPiece();
+            requestAnimationFrame(update);
+        }
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'ArrowLeft') {
+                currentPiece.x--;
+                if (collide()) currentPiece.x++;
+            }
+            if (event.key === 'ArrowRight') {
+                currentPiece.x++;
+                if (collide()) currentPiece.x--;
+            }
+            if (event.key === 'ArrowDown') {
+                currentPiece.y++;
+                if (collide()) currentPiece.y--;
+            }
+            if (event.key === 'ArrowUp') {
+                const rotated = currentPiece.shape[0].map((_, i) => currentPiece.shape.map(row => row[i])).reverse();
+                const previousShape = currentPiece.shape;
+                currentPiece.shape = rotated;
+                if (collide()) currentPiece.shape = previousShape;
+            }
+        });
+
+        update();
+    </script>
+</body>
+</html>
